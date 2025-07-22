@@ -1,10 +1,12 @@
 package provider
 
 import (
+	"terraform-provider-qrator/provider/client"
+
+	"git.sberdevices.ru/iakarpov/terraform-provider-qrator/provider/datasources"
+	"git.sberdevices.ru/iakarpov/terraform-provider-qrator/provider/resources"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/plugin"
-	"github.com/user/terraform-provider-qrator/provider/datasources"
-	"github.com/user/terraform-provider-qrator/provider/resources"
 )
 
 // Provider — главная точка входа для Terraform-провайдера

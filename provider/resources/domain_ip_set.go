@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	"git.sberdevices.ru/iakarpov/terraform-provider-qrator/provider/client"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/user/terraform-provider-qrator/provider/client"
 )
 
 // DomainIPSet — ресурс для задания IP-адресов домену

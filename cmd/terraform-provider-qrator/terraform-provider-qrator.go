@@ -1,8 +1,8 @@
 package main
 
 import (
+	"git.sberdevices.ru/iakarpov/terraform-provider-qrator/provider"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/plugin"
-	"github.com/user/terraform-provider-qrator/provider"
 )
 
 func main() {
