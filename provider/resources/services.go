@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"git.sberdevices.ru/iakarpov/terraform-provider-qrator/provider/client"
+	"github.com/Kvazy-Garry/terraform-provider-qrator/provider/client"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )

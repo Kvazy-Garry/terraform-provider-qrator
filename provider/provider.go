@@ -3,8 +3,8 @@ package provider
 import (
 	"terraform-provider-qrator/provider/client"
 
-	"git.sberdevices.ru/iakarpov/terraform-provider-qrator/provider/datasources"
-	"git.sberdevices.ru/iakarpov/terraform-provider-qrator/provider/resources"
+	"github.com/Kvazy-Garry/terraform-provider-qrator/provider/datasources"
+	"github.com/Kvazy-Garry/terraform-provider-qrator/provider/resources"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/plugin"
 )
