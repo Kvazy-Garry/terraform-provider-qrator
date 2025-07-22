@@ -1,0 +1,24 @@
+# Игнорируемые файлы и директории
+.DS_Store
+.idea
+terraform.tfstate*
+build/*
+dist/*
+*.bak
+*.swp
+*.log
+*.tgz
+*.zip
+*.tar.gz
+node_modules/
+coverage/
+dist/
+*.iml
+.idea
+npm-debug.log
+pnpm-debug.log
+yarn-error.log
+*.env.*
+*.tmp
+__pycache__
+*.pyc
