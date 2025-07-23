@@ -6,7 +6,6 @@ import (
 	"github.com/Kvazy-Garry/terraform-provider-qrator/provider/datasources"
 	"github.com/Kvazy-Garry/terraform-provider-qrator/provider/resources"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/plugin"
 )
 
 // Provider — главная точка входа для Terraform-провайдера
@@ -43,11 +42,4 @@ func Provider() *schema.Provider {
 			return client.NewQRClient(config.Endpoint, config.Token, config.ClientID), nil
 		},
 	}
-}
-
-// Точка входа для Terraform-плагина
-func main() {
-	plugin.Serve(&plugin.ServeOpts{
-		ProviderFunc: Provider,
-	})
 }
