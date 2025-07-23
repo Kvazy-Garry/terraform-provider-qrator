@@ -1,6 +1,8 @@
 module github.com/Kvazy-Garry/terraform-provider-qrator
 
-go 1.19
+go 1.23.0
+
+toolchain go1.24.5
 
 require github.com/hashicorp/terraform-plugin-sdk/v2 v2.37.0
 

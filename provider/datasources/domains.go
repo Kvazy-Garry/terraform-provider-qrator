@@ -3,6 +3,7 @@ package datasources
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/Kvazy-Garry/terraform-provider-qrator/provider/client"
@@ -10,7 +11,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
-// DomainsRead экспортируемая функция для чтения доменов
 func DomainsRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	cli := m.(*client.QRAPI)
 
@@ -59,19 +59,36 @@ func DomainsRead(ctx context.Context, d *schema.ResourceData, m interface{}) dia
 			}
 		}
 
+		// Обрабатываем ip_json
+		var ipJsonList []interface{}
+		if ipJsonRaw, exists := domainMap["ip_json"]; exists && ipJsonRaw != nil {
+			switch v := ipJsonRaw.(type) {
+			case []interface{}:
+				ipJsonList = v
+			case map[string]interface{}:
+				ipJsonList = []interface{}{v} // Обернуть map в массив
+			default:
+				log.Printf("[WARN] Неподдерживаемый тип ip_json в домене %d: %T", i, ipJsonRaw)
+				ipJsonList = []interface{}{}
+			}
+		}
+
 		tfDomains[i] = map[string]interface{}{
 			"id":         domainMap["id"],
 			"name":       domainMap["name"],
 			"status":     domainMap["status"],
 			"ip":         ipList,
-			"ip_json":    domainMap["ip_json"],
+			"ip_json":    ipJsonList, // Используем обработанное значение
 			"qrator_ip":  domainMap["qratorIp"],
 			"is_service": domainMap["isService"],
 			"ports":      domainMap["ports"],
 		}
+
+		log.Printf("[DEBUG] Processed domain %d: %+v", i, tfDomains[i])
 	}
 
 	if err := d.Set("domains", tfDomains); err != nil {
+		log.Printf("[ERROR] Failed to set domains: %v", err)
 		return diag.FromErr(fmt.Errorf("ошибка сохранения доменов: %v", err))
 	}
 

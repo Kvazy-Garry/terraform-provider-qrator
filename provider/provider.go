@@ -39,7 +39,7 @@ func Provider() *schema.Provider {
 
 func datasourceQratorDomains() *schema.Resource {
 	return &schema.Resource{
-		ReadContext: datasources.DomainsRead, // Используем экспортируемую функцию
+		ReadContext: datasources.DomainsRead,
 		Schema: map[string]*schema.Schema{
 			"domains": {
 				Type:     schema.TypeList,
@@ -93,13 +93,12 @@ func datasourceQratorDomains() *schema.Resource {
 		},
 	}
 }
+
 func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
-	// Получаем конфигурацию из Terraform
 	token := d.Get("token").(string)
 	clientID := d.Get("client_id").(int)
 	endpoint := d.Get("endpoint").(string)
 
-	// Валидация параметров
 	if token == "" {
 		return nil, diag.FromErr(fmt.Errorf("токен не может быть пустым"))
 	}
@@ -107,10 +106,7 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 		return nil, diag.FromErr(fmt.Errorf("client_id должен быть положительным числом"))
 	}
 
-	// Создаем клиент API
 	client := client.NewQRClient(endpoint, token, clientID)
-
-	// Добавляем логирование для отладки
 	log.Printf("[DEBUG] Создан клиент Qrator API: endpoint=%s, clientID=%d", endpoint, clientID)
 
 	return client, nil
