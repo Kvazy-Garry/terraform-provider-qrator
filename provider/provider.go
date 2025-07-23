@@ -1,45 +1,117 @@
 package provider
 
 import (
-	"github.com/Kvazy-Garry/terraform-provider-qrator/provider/client"
+	"context"
+	"fmt"
+	"log"
 
+	"github.com/Kvazy-Garry/terraform-provider-qrator/provider/client"
 	"github.com/Kvazy-Garry/terraform-provider-qrator/provider/datasources"
-	"github.com/Kvazy-Garry/terraform-provider-qrator/provider/resources"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
-// Provider — главная точка входа для Terraform-провайдера
 func Provider() *schema.Provider {
 	return &schema.Provider{
 		Schema: map[string]*schema.Schema{
-			"endpoint": {
-				Type:        schema.TypeString,
-				Description: "Адрес API Qrator",
-				Required:    true,
-			},
 			"token": {
 				Type:        schema.TypeString,
-				Description: "Токен авторизации",
 				Required:    true,
+				DefaultFunc: schema.EnvDefaultFunc("QRATOR_TOKEN", nil),
 			},
 			"client_id": {
-				Type:        schema.TypeInt,
-				Description: "Идентификатор клиента",
-				Required:    true,
+				Type:     schema.TypeInt,
+				Required: true,
+			},
+			"endpoint": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Default:  "https://api.qrator.net",
 			},
 		},
+		ResourcesMap: map[string]*schema.Resource{},
 		DataSourcesMap: map[string]*schema.Resource{
-			"qrator_domains":  datasources.Domains(),
-			"qrator_services": datasources.Services(),
+			"qrator_domains": datasourceQratorDomains(),
 		},
-		ResourcesMap: map[string]*schema.Resource{
-			"qrator_domain":        resources.Domain(),
-			"qrator_service":       resources.Service(),
-			"qrator_domain_ip_set": resources.DomainIPSet(),
-		},
-		ConfigureFunc: func(d *schema.ResourceData) (interface{}, error) {
-			config := GetConfig(d)
-			return client.NewQRClient(config.Endpoint, config.Token, config.ClientID), nil
+		ConfigureContextFunc: providerConfigure,
+	}
+}
+
+func datasourceQratorDomains() *schema.Resource {
+	return &schema.Resource{
+		ReadContext: datasources.DomainsRead, // Используем экспортируемую функцию
+		Schema: map[string]*schema.Schema{
+			"domains": {
+				Type:     schema.TypeList,
+				Computed: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"id": {
+							Type:     schema.TypeInt,
+							Computed: true,
+						},
+						"name": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"status": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"ip": {
+							Type:     schema.TypeList,
+							Computed: true,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+							},
+						},
+						"ip_json": {
+							Type:     schema.TypeList,
+							Computed: true,
+							Elem: &schema.Schema{
+								Type: schema.TypeMap,
+							},
+						},
+						"qrator_ip": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"is_service": {
+							Type:     schema.TypeBool,
+							Computed: true,
+						},
+						"ports": {
+							Type:     schema.TypeMap,
+							Computed: true,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+							},
+						},
+					},
+				},
+			},
 		},
 	}
+}
+func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
+	// Получаем конфигурацию из Terraform
+	token := d.Get("token").(string)
+	clientID := d.Get("client_id").(int)
+	endpoint := d.Get("endpoint").(string)
+
+	// Валидация параметров
+	if token == "" {
+		return nil, diag.FromErr(fmt.Errorf("токен не может быть пустым"))
+	}
+	if clientID <= 0 {
+		return nil, diag.FromErr(fmt.Errorf("client_id должен быть положительным числом"))
+	}
+
+	// Создаем клиент API
+	client := client.NewQRClient(endpoint, token, clientID)
+
+	// Добавляем логирование для отладки
+	log.Printf("[DEBUG] Создан клиент Qrator API: endpoint=%s, clientID=%d", endpoint, clientID)
+
+	return client, nil
 }

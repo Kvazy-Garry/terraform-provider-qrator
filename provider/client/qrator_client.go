@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 )
@@ -43,77 +43,67 @@ type RPCResponse struct {
 
 // SendRPCRequest — метод отправки запроса к API
 func (cli *QRAPI) SendRPCRequest(method string, params interface{}, result interface{}) error {
-	// 1. Подготовка тела запроса
-	requestBody := RPCRequest{
-		Method: method,
-		Params: []interface{}{}, // Явно указываем пустой массив вместо nil
-		ID:     1,
+	requestBody := map[string]interface{}{
+		"method": method,
+		"params": params,
+		"id":     1,
 	}
 
-	// 2. Маршалинг JSON с обработкой ошибки
 	jsonBytes, err := json.Marshal(requestBody)
 	if err != nil {
-		return fmt.Errorf("failed to marshal request: %v", err)
+		return fmt.Errorf("ошибка кодирования запроса: %v", err)
 	}
 
-	// 3. Логирование для отладки (можно убрать после тестов)
-	log.Printf("[DEBUG] Sending request to %s/request/client/%d", cli.Endpoint, cli.ClientID)
-	log.Printf("[DEBUG] Request body: %s", string(jsonBytes))
-
-	// 4. Создание HTTP-запроса
 	req, err := http.NewRequest(
 		"POST",
 		fmt.Sprintf("%s/request/client/%d", cli.Endpoint, cli.ClientID),
 		bytes.NewBuffer(jsonBytes),
 	)
 	if err != nil {
-		return fmt.Errorf("failed to create request: %v", err)
+		return fmt.Errorf("ошибка создания запроса: %v", err)
 	}
 
-	// 5. Установка заголовков
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Qrator-Auth", cli.Token)
 
-	// 6. Отправка запроса
 	resp, err := cli.HttpCli.Do(req)
 	if err != nil {
-		return fmt.Errorf("request failed: %v", err)
+		return fmt.Errorf("ошибка выполнения запроса: %v", err)
 	}
 	defer resp.Body.Close()
 
-	// 7. Проверка статус-кода
-	if resp.StatusCode != http.StatusOK {
-		body, _ := ioutil.ReadAll(resp.Body)
-		return fmt.Errorf("API error: status %d, response: %s", resp.StatusCode, string(body))
-	}
-
-	// 8. Чтение тела ответа
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return fmt.Errorf("failed to read response body: %v", err)
+		return fmt.Errorf("ошибка чтения ответа: %v", err)
 	}
 
-	// 9. Парсинг JSON ответа
-	var response RPCResponse
-	if err := json.Unmarshal(body, &response); err != nil {
-		return fmt.Errorf("failed to unmarshal response: %v", err)
+	// Логирование для отладки
+	log.Printf("[DEBUG] API Response: %s", string(body))
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("HTTP ошибка %d: %s", resp.StatusCode, string(body))
 	}
 
-	// 10. Проверка ошибки от API
-	if response.Error != nil {
-		return fmt.Errorf("API returned error: %v", response.Error)
-	}
-
-	// 11. Заполнение результата
-	if result != nil {
-		resultJson, err := json.Marshal(response.Result)
-		if err != nil {
-			return fmt.Errorf("failed to marshal result: %v", err)
+	// Пытаемся распарсить ответ как объект
+	var responseObj map[string]interface{}
+	if err := json.Unmarshal(body, &responseObj); err == nil {
+		if errObj, exists := responseObj["error"]; exists && errObj != nil {
+			return fmt.Errorf("API ошибка: %v", errObj)
 		}
-		if err := json.Unmarshal(resultJson, result); err != nil {
-			return fmt.Errorf("failed to unmarshal into result: %v", err)
+		if result != nil {
+			return json.Unmarshal(body, result)
 		}
+		return nil
 	}
 
-	return nil
+	// Если не получилось как объект, пробуем как массив
+	var responseArr []interface{}
+	if err := json.Unmarshal(body, &responseArr); err == nil {
+		if result != nil {
+			return json.Unmarshal(body, result)
+		}
+		return nil
+	}
+
+	return fmt.Errorf("не удалось распарсить ответ API")
 }
