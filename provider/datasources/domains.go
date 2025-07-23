@@ -64,12 +64,15 @@ func DomainsRead(ctx context.Context, d *schema.ResourceData, m interface{}) dia
 		if ipJsonRaw, exists := domainMap["ip_json"]; exists && ipJsonRaw != nil {
 			switch v := ipJsonRaw.(type) {
 			case []interface{}:
-				ipJsonList = v
+				for _, item := range v {
+					if ipJsonMap, ok := item.(map[string]interface{}); ok {
+						ipJsonList = append(ipJsonList, normalizeIpJson(ipJsonMap))
+					}
+				}
 			case map[string]interface{}:
-				ipJsonList = []interface{}{v} // Обернуть map в массив
+				ipJsonList = append(ipJsonList, normalizeIpJson(v))
 			default:
 				log.Printf("[WARN] Неподдерживаемый тип ip_json в домене %d: %T", i, ipJsonRaw)
-				ipJsonList = []interface{}{}
 			}
 		}
 
@@ -78,7 +81,7 @@ func DomainsRead(ctx context.Context, d *schema.ResourceData, m interface{}) dia
 			"name":       domainMap["name"],
 			"status":     domainMap["status"],
 			"ip":         ipList,
-			"ip_json":    ipJsonList, // Используем обработанное значение
+			"ip_json":    ipJsonList,
 			"qrator_ip":  domainMap["qratorIp"],
 			"is_service": domainMap["isService"],
 			"ports":      domainMap["ports"],
@@ -94,4 +97,52 @@ func DomainsRead(ctx context.Context, d *schema.ResourceData, m interface{}) dia
 
 	d.SetId(fmt.Sprintf("%d", time.Now().UnixNano()))
 	return nil
+}
+
+func normalizeIpJson(ipJson map[string]interface{}) map[string]interface{} {
+	normalized := make(map[string]interface{})
+
+	for k, v := range ipJson {
+		switch k {
+		case "backups", "clusters", "weights":
+			if b, ok := v.(bool); ok {
+				normalized[k] = b
+			} else {
+				normalized[k] = false
+			}
+		case "balancer":
+			if s, ok := v.(string); ok {
+				normalized[k] = s
+			} else {
+				normalized[k] = ""
+			}
+		case "upstreams":
+			if upstreams, ok := v.([]interface{}); ok {
+				var normalizedUpstreams []interface{}
+				for _, u := range upstreams {
+					if upstream, ok := u.(map[string]interface{}); ok {
+						normalizedUpstream := make(map[string]interface{})
+						if ip, ok := upstream["ip"].(string); ok {
+							normalizedUpstream["ip"] = ip
+						}
+						if name, ok := upstream["name"].(string); ok {
+							normalizedUpstream["name"] = name
+						}
+						if typ, ok := upstream["type"].(string); ok {
+							normalizedUpstream["type"] = typ
+						}
+						if weight, ok := upstream["weight"].(float64); ok {
+							normalizedUpstream["weight"] = int(weight)
+						}
+						normalizedUpstreams = append(normalizedUpstreams, normalizedUpstream)
+					}
+				}
+				normalized[k] = normalizedUpstreams
+			}
+		default:
+			normalized[k] = v
+		}
+	}
+
+	return normalized
 }

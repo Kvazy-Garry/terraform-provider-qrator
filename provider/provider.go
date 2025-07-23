@@ -68,8 +68,49 @@ func datasourceQratorDomains() *schema.Resource {
 						"ip_json": {
 							Type:     schema.TypeList,
 							Computed: true,
-							Elem: &schema.Schema{
-								Type: schema.TypeMap,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"backups": {
+										Type:     schema.TypeBool,
+										Computed: true,
+									},
+									"balancer": {
+										Type:     schema.TypeString,
+										Computed: true,
+									},
+									"clusters": {
+										Type:     schema.TypeBool,
+										Computed: true,
+									},
+									"upstreams": {
+										Type:     schema.TypeList,
+										Computed: true,
+										Elem: &schema.Resource{
+											Schema: map[string]*schema.Schema{
+												"ip": {
+													Type:     schema.TypeString,
+													Computed: true,
+												},
+												"name": {
+													Type:     schema.TypeString,
+													Computed: true,
+												},
+												"type": {
+													Type:     schema.TypeString,
+													Computed: true,
+												},
+												"weight": {
+													Type:     schema.TypeInt,
+													Computed: true,
+												},
+											},
+										},
+									},
+									"weights": {
+										Type:     schema.TypeBool,
+										Computed: true,
+									},
+								},
 							},
 						},
 						"qrator_ip": {
