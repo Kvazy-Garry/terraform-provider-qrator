@@ -39,9 +39,25 @@ func serviceCreate(ctx context.Context, d *schema.ResourceData, m interface{}) d
 	var diags diag.Diagnostics
 	cli := m.(*client.QRAPI)
 	name := d.Get("name").(string)
-	ports := flattenPorts(d.Get("ports"))
 
-	err := cli.SendRPCRequest("service_create", [][]interface{}{[]string{"127.0.0.1"}, ports, name}, nil)
+	// Приводим тип d.Get("ports") к map[string]interface{}
+	portsRaw := d.Get("ports").(map[string]interface{})
+	ports := flattenPorts(portsRaw)
+
+	// Подготовим порты для отправки в API
+	preparedPorts := preparePortMapForAPI(ports)
+
+	// IP-адрес нужно преобразовать в []interface{}
+	ipList := []interface{}{"127.0.0.1"}
+
+	// Соберем параметры для вызова SendRPCRequest
+	params := [][]interface{}{
+		ipList,        // []interface{} {"127.0.0.1"}
+		preparedPorts, // []interface{} {карта портов}
+		{name},        // []interface{} {строка name}
+	}
+
+	err := cli.SendRPCRequest("service_create", params, nil)
 	if err != nil {
 		return diag.FromErr(fmt.Errorf("ошибка создания сервиса: %v", err))
 	}
@@ -53,7 +69,6 @@ func serviceCreate(ctx context.Context, d *schema.ResourceData, m interface{}) d
 func serviceRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 	cli := m.(*client.QRAPI)
-	name := d.Id()
 
 	err := cli.SendRPCRequest("service_name_get", nil, nil)
 	if err != nil {
@@ -63,13 +78,34 @@ func serviceRead(ctx context.Context, d *schema.ResourceData, m interface{}) dia
 	return diags
 }
 
+// Helper function to convert map[int]string into a suitable format for the request
+func preparePortMapForAPI(portMap map[int]string) []interface{} {
+	portInfo := make([]interface{}, 0, len(portMap))
+	for key, value := range portMap {
+		portInfo = append(portInfo, map[string]interface{}{
+			"port":     key,
+			"protocol": value,
+		})
+	}
+	return portInfo
+}
+
 func serviceUpdate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 	cli := m.(*client.QRAPI)
 	name := d.Id()
-	ports := flattenPorts(d.Get("ports"))
 
-	err := cli.SendRPCRequest("service_update", [][]interface{}{[]string{"127.0.0.1"}, ports, name}, nil)
+	// Приводим тип d.Get("ports") к map[string]interface{}
+	portsRaw := d.Get("ports").(map[string]interface{})
+	ports := flattenPorts(portsRaw)
+
+	// Подготовим порты для отправки в API
+	preparedPorts := preparePortMapForAPI(ports)
+
+	// Явно преобразуем []string{"127.0.0.1"} в []interface{}
+	ipList := []interface{}{"127.0.0.1"}
+
+	err := cli.SendRPCRequest("service_update", [][]interface{}{ipList, preparedPorts, {name}}, nil)
 	if err != nil {
 		return diag.FromErr(fmt.Errorf("ошибка обновления сервиса: %v", err))
 	}

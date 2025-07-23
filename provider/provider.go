@@ -1,7 +1,7 @@
 package provider
 
 import (
-	"terraform-provider-qrator/provider/client"
+	"github.com/Kvazy-Garry/terraform-provider-qrator/provider/client"
 
 	"github.com/Kvazy-Garry/terraform-provider-qrator/provider/datasources"
 	"github.com/Kvazy-Garry/terraform-provider-qrator/provider/resources"

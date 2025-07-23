@@ -40,7 +40,13 @@ func domainCreate(ctx context.Context, d *schema.ResourceData, m interface{}) di
 	name := d.Get("name").(string)
 	upstreams := expandStringList(d.Get("upstreams").([]interface{}))
 
-	err := cli.SendRPCRequest("domain_create", [][]interface{}{upstreams, name}, nil)
+	// Нужно явно обернуть каждый аргумент в срез типа []interface{}
+	params := [][]interface{}{
+		{interface{}(upstreams)}, // Преобразуем upstreams в []interface{}
+		{name},                   // Преобразуем name в []interface{}
+	}
+
+	err := cli.SendRPCRequest("domain_create", params, nil)
 	if err != nil {
 		return diag.FromErr(fmt.Errorf("ошибка создания домена: %v", err))
 	}
@@ -52,7 +58,6 @@ func domainCreate(ctx context.Context, d *schema.ResourceData, m interface{}) di
 func domainRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 	cli := m.(*client.QRAPI)
-	name := d.Id()
 
 	err := cli.SendRPCRequest("domain_name_get", nil, nil)
 	if err != nil {
@@ -68,7 +73,13 @@ func domainUpdate(ctx context.Context, d *schema.ResourceData, m interface{}) di
 	name := d.Id()
 	upstreams := expandStringList(d.Get("upstreams").([]interface{}))
 
-	err := cli.SendRPCRequest("domain_ip_set", [][]interface{}{upstreams, name}, nil)
+	// Правильная передача аргументов в срез типа []interface{}
+	params := [][]interface{}{
+		{interface{}(upstreams)}, // преобразуем upstreams в []interface{}
+		{name},                   // преобразуем name в []interface{}
+	}
+
+	err := cli.SendRPCRequest("domain_ip_set", params, nil)
 	if err != nil {
 		return diag.FromErr(fmt.Errorf("ошибка обновления домена: %v", err))
 	}

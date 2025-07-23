@@ -38,9 +38,15 @@ func domainIPSetCreate(ctx context.Context, d *schema.ResourceData, m interface{
 	var diags diag.Diagnostics
 	cli := m.(*client.QRAPI)
 	domainName := d.Get("domain_name").(string)
-	upstreams := expandStringList(d.Get("upstreams").([]interface{}))
+	upstreams := convertUpstreamList(d.Get("upstreams").([]interface{}))
 
-	err := cli.SendRPCRequest("domain_ip_set", [][]interface{}{upstreams, domainName}, nil)
+	// Преобразуем upstreams и domainName в правильный формат
+	params := [][]interface{}{
+		{interface{}(upstreams)},
+		{interface{}(domainName)},
+	}
+
+	err := cli.SendRPCRequest("domain_ip_set", params, nil)
 	if err != nil {
 		return diag.FromErr(fmt.Errorf("ошибка задания IP для домена: %v", err))
 	}
@@ -56,7 +62,7 @@ func domainIPSetRead(ctx context.Context, d *schema.ResourceData, m interface{})
 
 	err := cli.SendRPCRequest("domain_name_get", nil, nil)
 	if err != nil {
-		return diag.FromErr(fmt.Errorf("ошибка проверки существования домена: %v", err))
+		return diag.FromErr(fmt.Errorf("ошибка проверки существования домена '%s': %v", domainName, err)) // Добавлено использование переменной
 	}
 
 	return diags
@@ -66,9 +72,15 @@ func domainIPSetUpdate(ctx context.Context, d *schema.ResourceData, m interface{
 	var diags diag.Diagnostics
 	cli := m.(*client.QRAPI)
 	domainName := d.Id()
-	upstreams := expandStringList(d.Get("upstreams").([]interface{}))
+	upstreams := convertUpstreamList(d.Get("upstreams").([]interface{}))
 
-	err := cli.SendRPCRequest("domain_ip_set", [][]interface{}{upstreams, domainName}, nil)
+	// Конвертируем upstreams и domainName в []interface{}
+	params := [][]interface{}{
+		{interface{}(upstreams)},  // преобразовали []string в []interface{}
+		{interface{}(domainName)}, // преобразовали string в []interface{}
+	}
+
+	err := cli.SendRPCRequest("domain_ip_set", params, nil)
 	if err != nil {
 		return diag.FromErr(fmt.Errorf("ошибка обновления IP для домена: %v", err))
 	}
@@ -89,7 +101,7 @@ func domainIPSetDelete(ctx context.Context, d *schema.ResourceData, m interface{
 	return diags
 }
 
-func expandStringList(configured []interface{}) []string {
+func convertUpstreamList(configured []interface{}) []string {
 	vs := make([]string, 0, len(configured))
 	for _, v := range configured {
 		val, ok := v.(string)
