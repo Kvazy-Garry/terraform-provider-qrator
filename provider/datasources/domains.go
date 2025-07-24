@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strconv"
 	"time"
 
 	"github.com/Kvazy-Garry/terraform-provider-qrator/provider/client"
+	"github.com/Kvazy-Garry/terraform-provider-qrator/provider/utils"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -66,11 +68,11 @@ func DomainsRead(ctx context.Context, d *schema.ResourceData, m interface{}) dia
 			case []interface{}:
 				for _, item := range v {
 					if ipJsonMap, ok := item.(map[string]interface{}); ok {
-						ipJsonList = append(ipJsonList, normalizeIpJson(ipJsonMap))
+						ipJsonList = append(ipJsonList, utils.NormalizeIpJson(ipJsonMap))
 					}
 				}
 			case map[string]interface{}:
-				ipJsonList = append(ipJsonList, normalizeIpJson(v))
+				ipJsonList = append(ipJsonList, utils.NormalizeIpJson(v))
 			default:
 				log.Printf("[WARN] Неподдерживаемый тип ip_json в домене %d: %T", i, ipJsonRaw)
 			}
@@ -99,50 +101,94 @@ func DomainsRead(ctx context.Context, d *schema.ResourceData, m interface{}) dia
 	return nil
 }
 
-func normalizeIpJson(ipJson map[string]interface{}) map[string]interface{} {
-	normalized := make(map[string]interface{})
+// func normalizeIpJson(ipJson map[string]interface{}) map[string]interface{} {
+// 	normalized := make(map[string]interface{})
 
-	for k, v := range ipJson {
-		switch k {
-		case "backups", "clusters", "weights":
-			if b, ok := v.(bool); ok {
-				normalized[k] = b
-			} else {
-				normalized[k] = false
-			}
-		case "balancer":
-			if s, ok := v.(string); ok {
-				normalized[k] = s
-			} else {
-				normalized[k] = ""
-			}
-		case "upstreams":
-			if upstreams, ok := v.([]interface{}); ok {
-				var normalizedUpstreams []interface{}
-				for _, u := range upstreams {
-					if upstream, ok := u.(map[string]interface{}); ok {
-						normalizedUpstream := make(map[string]interface{})
-						if ip, ok := upstream["ip"].(string); ok {
-							normalizedUpstream["ip"] = ip
-						}
-						if name, ok := upstream["name"].(string); ok {
-							normalizedUpstream["name"] = name
-						}
-						if typ, ok := upstream["type"].(string); ok {
-							normalizedUpstream["type"] = typ
-						}
-						if weight, ok := upstream["weight"].(float64); ok {
-							normalizedUpstream["weight"] = int(weight)
-						}
-						normalizedUpstreams = append(normalizedUpstreams, normalizedUpstream)
-					}
-				}
-				normalized[k] = normalizedUpstreams
-			}
-		default:
-			normalized[k] = v
-		}
+// 	for k, v := range ipJson {
+// 		switch k {
+// 		case "backups", "clusters", "weights":
+// 			if b, ok := v.(bool); ok {
+// 				normalized[k] = b
+// 			} else {
+// 				normalized[k] = false
+// 			}
+// 		case "balancer":
+// 			if s, ok := v.(string); ok {
+// 				normalized[k] = s
+// 			} else {
+// 				normalized[k] = ""
+// 			}
+// 		case "upstreams":
+// 			if upstreams, ok := v.([]interface{}); ok {
+// 				var normalizedUpstreams []interface{}
+// 				for _, u := range upstreams {
+// 					if upstream, ok := u.(map[string]interface{}); ok {
+// 						normalizedUpstream := make(map[string]interface{})
+// 						if ip, ok := upstream["ip"].(string); ok {
+// 							normalizedUpstream["ip"] = ip
+// 						}
+// 						if name, ok := upstream["name"].(string); ok {
+// 							normalizedUpstream["name"] = name
+// 						}
+// 						if typ, ok := upstream["type"].(string); ok {
+// 							normalizedUpstream["type"] = typ
+// 						}
+// 						if weight, ok := upstream["weight"].(float64); ok {
+// 							normalizedUpstream["weight"] = int(weight)
+// 						}
+// 						normalizedUpstreams = append(normalizedUpstreams, normalizedUpstream)
+// 					}
+// 				}
+// 				normalized[k] = normalizedUpstreams
+// 			}
+// 		default:
+// 			normalized[k] = v
+// 		}
+// 	}
+
+// 	return normalized
+// }
+
+func DomainRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+	cli := m.(*client.QRAPI)
+	var diags diag.Diagnostics
+
+	domainID, err := strconv.Atoi(d.Id())
+	if err != nil {
+		return diag.FromErr(fmt.Errorf("неверный ID домена: %v", err))
 	}
 
-	return normalized
+	// Получаем информацию о домене
+	var domain map[string]interface{}
+	err = cli.SendRPCRequest("domain_get", []interface{}{domainID}, &domain)
+	if err != nil {
+		if utils.IsNotFoundError(err) {
+			d.SetId("")
+			return diags
+		}
+		return diag.FromErr(fmt.Errorf("ошибка получения домена: %v", err))
+	}
+
+	// Заполняем атрибуты
+	d.Set("name", domain["name"])
+	d.Set("status", domain["status"])
+	d.Set("qrator_ip", domain["qratorIp"])
+
+	if ipList, ok := domain["ip"].([]interface{}); ok {
+		d.Set("ip_list", ipList)
+	}
+
+	if ipJson, ok := domain["ip_json"].(map[string]interface{}); ok {
+		upstreamConfig := []map[string]interface{}{
+			{
+				"balancer":  ipJson["balancer"],
+				"weights":   ipJson["weights"],
+				"backups":   ipJson["backups"],
+				"upstreams": utils.FlattenUpstreams(ipJson["upstreams"].([]interface{})),
+			},
+		}
+		d.Set("upstream_config", upstreamConfig)
+	}
+
+	return diags
 }
