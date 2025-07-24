@@ -7,6 +7,7 @@ import (
 
 	"github.com/Kvazy-Garry/terraform-provider-qrator/provider/client"
 	"github.com/Kvazy-Garry/terraform-provider-qrator/provider/datasources"
+	"github.com/Kvazy-Garry/terraform-provider-qrator/provider/resources"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -29,11 +30,97 @@ func Provider() *schema.Provider {
 				Default:  "https://api.qrator.net",
 			},
 		},
-		ResourcesMap: map[string]*schema.Resource{},
+		ResourcesMap: map[string]*schema.Resource{
+			"qrator_domain": resourceQratorDomain(),
+		},
 		DataSourcesMap: map[string]*schema.Resource{
 			"qrator_domains": datasourceQratorDomains(),
 		},
 		ConfigureContextFunc: providerConfigure,
+	}
+}
+
+func resourceQratorDomain() *schema.Resource {
+	return &schema.Resource{
+		CreateContext: resources.DomainCreate,
+		ReadContext:   resourceDomainRead,
+		UpdateContext: resourceDomainUpdate,
+		DeleteContext: resourceDomainDelete,
+		Importer: &schema.ResourceImporter{
+			StateContext: schema.ImportStatePassthroughContext,
+		},
+		Schema: map[string]*schema.Schema{
+			"name": {
+				Type:     schema.TypeString,
+				Required: true,
+				ForceNew: true,
+			},
+			"ip_list": {
+				Type:     schema.TypeList,
+				Required: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
+			},
+			"upstream_config": {
+				Type:     schema.TypeList,
+				Optional: true,
+				MaxItems: 1,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"balancer": {
+							Type:     schema.TypeString,
+							Optional: true,
+							Default:  "roundrobin",
+						},
+						"weights": {
+							Type:     schema.TypeBool,
+							Optional: true,
+							Default:  false,
+						},
+						"backups": {
+							Type:     schema.TypeBool,
+							Optional: true,
+							Default:  false,
+						},
+						"upstreams": {
+							Type:     schema.TypeList,
+							Optional: true,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"type": {
+										Type:     schema.TypeString,
+										Required: true,
+									},
+									"ip": {
+										Type:     schema.TypeString,
+										Required: true,
+									},
+									"weight": {
+										Type:     schema.TypeInt,
+										Optional: true,
+										Default:  0,
+									},
+									"name": {
+										Type:     schema.TypeString,
+										Optional: true,
+										Default:  "",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			"status": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"qrator_ip": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+		},
 	}
 }
 

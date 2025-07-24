@@ -107,3 +107,42 @@ func (cli *QRAPI) SendRPCRequest(method string, params interface{}, result inter
 
 	return fmt.Errorf("не удалось распарсить ответ API")
 }
+
+// Запрос в API на создание домена
+func (cli *QRAPI) CreateDomain(ipList []string, name string, config map[string]interface{}) (int, error) {
+	var params []interface{}
+
+	if config != nil {
+		params = []interface{}{config, name}
+	} else {
+		params = []interface{}{ipList, name}
+	}
+
+	var domainID int
+	err := cli.SendRPCRequest("domain_create", params, &domainID)
+	if err != nil {
+		return 0, err
+	}
+
+	return domainID, nil
+}
+
+func (cli *QRAPI) GetDomain(domainID int) (map[string]interface{}, error) {
+	var domain map[string]interface{}
+	err := cli.SendRPCRequest("domain_get", []interface{}{domainID}, &domain)
+	return domain, err
+}
+
+func (cli *QRAPI) UpdateDomain(domainID int, ipList []string, config map[string]interface{}) error {
+	var params []interface{}
+	if config != nil {
+		params = []interface{}{domainID, config}
+	} else {
+		params = []interface{}{domainID, ipList}
+	}
+	return cli.SendRPCRequest("domain_update", params, nil)
+}
+
+func (cli *QRAPI) DeleteDomain(domainID int) error {
+	return cli.SendRPCRequest("domain_delete", []interface{}{domainID}, nil)
+}
