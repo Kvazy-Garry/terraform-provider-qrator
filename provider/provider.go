@@ -43,7 +43,7 @@ func Provider() *schema.Provider {
 func resourceQratorDomain() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resources.DomainCreate,
-		ReadContext:   resources.DomainRead,
+		ReadContext:   datasources.DomainRead,
 		UpdateContext: resources.DomainUpdate,
 		DeleteContext: resources.DomainDelete,
 		Importer: &schema.ResourceImporter{
