@@ -43,9 +43,9 @@ func Provider() *schema.Provider {
 func resourceQratorDomain() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resources.DomainCreate,
-		ReadContext:   resourceDomainRead,
-		UpdateContext: resourceDomainUpdate,
-		DeleteContext: resourceDomainDelete,
+		ReadContext:   resources.DomainRead,
+		UpdateContext: resources.DomainUpdate,
+		DeleteContext: resources.DomainDelete,
 		Importer: &schema.ResourceImporter{
 			StateContext: schema.ImportStatePassthroughContext,
 		},
